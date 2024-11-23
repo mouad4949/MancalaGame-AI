@@ -1,6 +1,9 @@
 package GameSearch;
 
+import java.io.*;
 import java.util.*;
+
+import static java.lang.System.exit;
 
 
 public class MancalaGame extends GameSearch {
@@ -67,8 +70,10 @@ public class MancalaGame extends GameSearch {
         return moves.toArray(new Position[0]);
     }
 
+
     @Override
     public Position makemovemulitjoueur(Position p, boolean joueur1, Move move) {
+        MancalaGame game = new MancalaGame();
         MancalaPosition pos = (MancalaPosition) p;
         MancalaMove mancalaMove = (MancalaMove) move;
 
@@ -88,7 +93,6 @@ public class MancalaGame extends GameSearch {
         }
         if (!joueur1 && (selectedPit < 6 || selectedPit > 11)) {
             System.out.println("Joueur 2 : choisissez une case entre 6 et 11 !");
-
             return pos;
         }
 
@@ -105,15 +109,54 @@ public class MancalaGame extends GameSearch {
                 // Joueur 1 traverse vers la zone adverse
                 pos.playerStore1++; // Incrément du score
                 seeds--; // Décrémente les graines
+                if(seeds==0 &&  !isAllEmpty(pos.board,0,5)){
+                    System.out.println("Autre chance !");
+                    game.playMultiplayerGame(pos, joueur1);
+                    return makemovemulitjoueur(p,false,null);
+                }
+                pos.board[index]++;
+                seeds--;
             } else if (!joueur1 && index == 0) {
                 // Joueur 2 traverse vers la zone adverse
                 pos.playerStore2++; // Incrément du score
-                seeds--; // Décrémente les graines
+                seeds--;
+                if(seeds==0 && !isAllEmpty(pos.board,6,11)){
+                    System.out.println("Autre chance !");
+                    game.playMultiplayerGame(pos, joueur1);
+                    return makemovemulitjoueur(p,false,null);
+                }
+                pos.board[index]++;
+                seeds--;
+                // Décrémente les graines
             } else {
                 // Ajouter une graine dans les autres cases
                 pos.board[index]++;
                 seeds--;
             }
+
+
+            if(joueur1 && index < 6 && seeds ==0 && pos.board[index]==1 && pos.board[index+6]!=0){
+                int collect=pos.board[index+6];
+                int collect1=pos.board[index];
+                pos.board[index]=0;
+                pos.board[index+6]=0;
+                pos.playerStore1+=collect+collect1;
+
+            }
+            if(!joueur1 && index>=6 && seeds ==0 && pos.board[index]==1 && pos.board[index-6]!=0){
+                int collect=pos.board[index-6];
+                int collect1=pos.board[index];
+                pos.board[index]=0;
+                pos.board[index-6]=0;
+                pos.playerStore2+=collect+collect1;
+
+            }
+        }
+        // Retournez la position mise à jour
+        // Vérification de la fin de partie
+        if (isGameOver(pos)) {
+            finDePartie(pos);
+            return null; // Signaler que le jeu est terminé
         }
 
 
@@ -121,6 +164,84 @@ public class MancalaGame extends GameSearch {
         return pos;
     }
 
+
+    public boolean isGameOver(MancalaPosition pos) {
+        return isAllEmpty(pos.board, 0, 5) || isAllEmpty(pos.board, 6, 11);
+    }
+
+    public void finDePartie(MancalaPosition pos) {
+        // Déterminez le joueur qui peut récupérer les graines restantes
+        if (isAllEmpty(pos.board, 0, 5)) {
+            pos.playerStore2 += sumRemainingSeeds(pos.board, 6, 11);
+            clearRemainingSeeds(pos.board, 6, 11);
+        } else if (isAllEmpty(pos.board, 6, 11)) {
+            pos.playerStore1 += sumRemainingSeeds(pos.board, 0, 5);
+            clearRemainingSeeds(pos.board, 0, 5);
+        }
+
+        // Affichez les scores finaux
+        System.out.println("Fin de partie !");
+        System.out.println("Score Joueur 1 : " + pos.playerStore1 + " | Score Joueur 2 : " + pos.playerStore2);
+
+        // Affichez le gagnant
+        if (pos.playerStore1 > pos.playerStore2) {
+            System.out.println("Joueur 1 a gagné !");
+            exit(-1);
+        } else if (pos.playerStore1 < pos.playerStore2) {
+            System.out.println("Joueur 2 a gagné !");
+            exit(-1);
+        } else {
+            System.out.println("Match nul !");
+            exit(-1);
+        }
+    }
+
+    private boolean isAllEmpty(int[] board, int start, int end) {
+        for (int i = start; i <= end; i++) {
+            if (board[i] > 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private int sumRemainingSeeds(int[] board, int start, int end) {
+        int sum = 0;
+        for (int i = start; i <= end; i++) {
+            sum += board[i];
+        }
+        return sum;
+    }
+
+    private void clearRemainingSeeds(int[] board, int start, int end) {
+        for (int i = start; i <= end; i++) {
+            board[i] = 0;
+        }
+    }
+
+    public void afficherBoard(Position pos) {
+        MancalaPosition mancalaPos = (MancalaPosition) pos;
+        System.out.println("Joueur 1 (Mancala): " + mancalaPos.playerStore1);
+        System.out.println("P1: " + Arrays.toString(Arrays.copyOfRange(mancalaPos.board, 0, 6)));
+        System.out.println("P2: " + Arrays.toString(Arrays.copyOfRange(mancalaPos.board, 6, 12)));
+        System.out.println("Joueur 2 (Mancala): " + mancalaPos.playerStore2);
+    }
+    public void saveGame(GameSave gameSave) {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("mancala_save.dat"))) {
+            oos.writeObject(gameSave);
+        } catch (IOException e) {
+            System.err.println("Erreur lors de la sauvegarde de la partie : " + e.getMessage());
+        }
+    }
+
+    public GameSave loadGame() {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream("mancala_save.dat"))) {
+            return (GameSave) ois.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Erreur lors du chargement de la partie : " + e.getMessage());
+            return null;
+        }
+    }
 
 
 
@@ -180,7 +301,7 @@ public class MancalaGame extends GameSearch {
                 System.out.println("Entrez 1 pour jouer en mode multijoueur, ou 0 pour jouer avec ordinateur :");
                 int choice = scanner.nextInt();
                 if (choice == 1) {
-                    multijoueur=true;
+                    game.playMultiplayerGame(startingPosition,true);
                     break;
                 }else if (choice == 0) {
                     System.out.println("Entrez 1 pour que le joueur commence, ou 0 pour que l'ordinateur commence :");
@@ -197,7 +318,7 @@ public class MancalaGame extends GameSearch {
                 }
                break;
             }
-            game.playGame(startingPosition, playerStarts,multijoueur); // Le joueur humain ou l'ordinateur commence selon le choix
+            game.playGame(startingPosition, playerStarts); // Le joueur humain ou l'ordinateur commence selon le choix
 
     }
 

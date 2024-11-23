@@ -2,6 +2,8 @@ package GameSearch;
 
 import java.util.*;
 
+import static java.lang.System.exit;
+
 public abstract class GameSearch {
 
     public static final boolean DEBUG = false;
@@ -96,65 +98,101 @@ public abstract class GameSearch {
     }
 
 
-    public void playMultiplayerGame(Position startingPosition) {
-        boolean joueur1 = true; // Joueur 1 commence
+    public void playMultiplayerGame(Position startingPosition, boolean joueur1) {
+        MancalaGame gameLogic = new MancalaGame();
+        boolean gameOver = false; // Drapeau pour arrêter le jeu proprement
 
-        while (true) {
-            printPosition(startingPosition);
+        while (!gameOver) {
+            System.out.println("\nMenu :");
+            System.out.println("1. Jouer un tour");
+            System.out.println("2. Sauvegarder la partie");
+            System.out.println("3. Charger une partie");
+            System.out.println("4. Quitter");
+            System.out.print("Choisissez une option : ");
+            Scanner scanner = new Scanner(System.in);
+            int choice = scanner.nextInt();
 
-            // Vérifiez si la partie est gagnée ou nulle
-            if (wonPosition(startingPosition, true)) {
-                System.out.println("Joueur 1 a gagné !");
-                break;
+            switch (choice) {
+                case 1: // Jouer un tour
+                    gameLogic.printPosition(startingPosition); // Affiche l'état du board avant chaque tour
+
+                    MancalaPosition pos = (MancalaPosition) startingPosition;
+                    // Vérifiez si la partie est terminée
+                    if (gameLogic.isGameOver(pos)) {
+                        gameLogic.finDePartie(pos);
+                        gameOver = true; // Arrêtez la boucle
+                        continue; // Passez directement à la fin de la boucle
+                    }
+                    // Demander le tour au joueur
+                    boolean mouvementValide = false;
+                    while (!mouvementValide) {
+                        System.out.print((joueur1 ? "Joueur 1" : "Joueur 2") + ", choisissez votre case : ");
+                        Move move = createMove(); // Récupère le mouvement du joueur
+                        int selectedPit = ((MancalaMove) move).selectedPit;
+
+                        // Vérifiez que le joueur joue sur ses propres cases
+                        if (joueur1 && (selectedPit < 0 || selectedPit > 5)) {
+                            System.out.println("Choisissez une case entre 0 et 5.");
+                            continue;
+                        }
+                        if (!joueur1 && (selectedPit < 6 || selectedPit > 11)) {
+                            System.out.println("Choisissez une case entre 6 et 11.");
+                            continue;
+                        }
+
+                        // Tentez le mouvement
+                        Position nouvellePosition = gameLogic.makemovemulitjoueur(startingPosition, joueur1, move);
+                        if (nouvellePosition != null) {
+                            startingPosition = nouvellePosition;
+                            mouvementValide = true; // Mouvement accepté
+                        }
+                    }
+
+                    // Alternez le tour
+                    joueur1 = !joueur1;
+                    gameLogic.printPosition(startingPosition);
+                    break;
+
+                case 2: // Sauvegarder la partie
+                    gameLogic.saveGame(new GameSave((MancalaPosition) startingPosition, joueur1));
+                    System.out.println("Partie sauvegardée !");
+                    break;
+
+                case 3: // Charger une partie
+                    GameSave loadedGame = gameLogic.loadGame();
+                    if (loadedGame != null) {
+                        startingPosition = loadedGame.position;
+                        joueur1 = loadedGame.joueur1;
+                        System.out.println("Partie chargée !");
+                        gameLogic.printPosition(startingPosition); // Affiche l'état du board après chargement
+                    } else {
+                        System.out.println("Aucune partie sauvegardée trouvée !");
+                    }
+                    break;
+
+                case 4: // Quitter
+
+                    System.out.println("Quitter le jeu.");
+                    exit(-1);
+                    break;
+
+                default:
+                    System.out.println("Option invalide !");
+                    break;
             }
-            if (wonPosition(startingPosition, false)) {
-                System.out.println("Joueur 2 a gagné !");
-                break;
-            }
-            if (drawnPosition(startingPosition)) {
-                System.out.println("Match nul !");
-                break;
-            }
-
-            boolean mouvementValide = false;
-            while (!mouvementValide) {
-                System.out.print((joueur1 ? "Joueur 1" : "Joueur 2") + ", choisissez votre case : ");
-                Move move = createMove(); // Récupère le mouvement du joueur
-                // Vérifiez que le joueur joue sur ses propres cases
-                int selectedPit = ((MancalaMove) move).selectedPit;
-                if (joueur1 && (selectedPit < 0 || selectedPit > 5)) {
-                    System.out.println("Choisissez une case entre 0 et 5.");
-                    continue;
-                }
-                if (!joueur1 && (selectedPit < 6 || selectedPit > 11)) {
-                    System.out.println("Choisissez une case entre 6 et 11.");
-                    continue;
-                }
-                Position nouvellePosition = makemovemulitjoueur(startingPosition, joueur1, move);
-                if (nouvellePosition != null) {
-                    startingPosition = nouvellePosition;
-                    mouvementValide = true; // Sort de la boucle si le mouvement est valide
-                }
-            }
-
-
-            // Alternez le tour
-            joueur1 = !joueur1;
         }
     }
 
-
-
-    public void playGame(Position startingPosition, boolean humanPlayFirst,boolean multijoueur) {
-        if (humanPlayFirst == false && !multijoueur) {
+    public void playGame(Position startingPosition, boolean humanPlayFirst) {
+        if (humanPlayFirst == false ) {
             Vector v = alphaBeta(0, startingPosition, PROGRAM);
             startingPosition = (Position)v.elementAt(1);
         }
-        if (multijoueur) {
-            System.out.println("Mode multijoueur");
-            playMultiplayerGame(startingPosition);
-            return;
-        }
+//        if (multijoueur) {
+//            System.out.println("Mode multijoueur");
+//            playMultiplayerGame(startingPosition);
+//            return;
+//        }
         while (true) {
             
             printPosition(startingPosition);

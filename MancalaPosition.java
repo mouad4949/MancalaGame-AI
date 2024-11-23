@@ -1,7 +1,8 @@
 package GameSearch;
 
+import java.io.Serializable;
 import java.util.*;
-public class MancalaPosition extends Position {
+public class MancalaPosition extends Position implements Serializable {
     public int[] board; // Les cases du plateau
     public int playerStore1; // Mancala du joueur 1
     public int playerStore2; // Mancala du joueur 2
