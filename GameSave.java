@@ -1,7 +1,5 @@
 package GameSearch;
 
-import GameSearch.MancalaPosition;
-
 import java.io.Serializable;
 
 public class GameSave implements Serializable {
